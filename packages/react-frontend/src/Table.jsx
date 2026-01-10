@@ -1,10 +1,13 @@
 // src/Table.jsx
+import React from "react";
+
 function TableHeader() {
   return (
     <thead>
       <tr>
         <th>Name</th>
         <th>Job</th>
+        <th>Remove</th>
       </tr>
     </thead>
   );
