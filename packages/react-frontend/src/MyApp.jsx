@@ -10,17 +10,47 @@ function MyApp() {
 
   function updateList(person) { 
     postUser(person)
-      .then(() => setCharacters([...characters, person]))
+      .then((res) => {
+        if (res.status === 201) {
+          return res.json().then((createdUser) => {
+            setCharacters([...characters, createdUser]);
+          });
+        } else {
+          console.log(`Failed to create user. Expected 201, got: ${res.status}`);
+          throw new Error(`Expected 201 status, received ${res.status}`);
+        }
+      })
       .catch((error) => {
         console.log(error);
-      })
-}
+      });
+  }
 
   function removeOneCharacter(index) {
-  const updated = characters.filter((character, i) => {
-    return i !== index;
-  });
-    setCharacters(updated);
+    const userToDelete = characters[index];
+    
+    deleteUser(userToDelete.id)
+      .then((res) => {
+        if (res.status === 204) {
+          const updated = characters.filter((character, i) => {
+            return i !== index;
+          });
+          setCharacters(updated);
+        } else if (res.status === 404) {
+          console.log("User not found in backend");
+        } else {
+          console.log(`Unexpected status code: ${res.status}`);
+        }
+      })
+      .catch((error) => {
+        console.log("Error deleting user:", error);
+      });
+  }
+
+  function deleteUser(id) {
+    const promise = fetch(`http://localhost:8000/users/${id}`, {
+      method: "DELETE",
+    });
+    return promise;
   }
 
   function fetchUsers() {
@@ -30,13 +60,13 @@ function MyApp() {
 
   useEffect(() => {
     fetchUsers()
-	    .then((res) => res.json())
-	    .then((json) => setCharacters(json["users_list"]))
-	    .catch((error) => { console.log(error); });
+      .then((res) => res.json())
+      .then((json) => setCharacters(json["users_list"]))
+      .catch((error) => { console.log(error); });
   }, [] );
 
   function postUser(person) {
-    const promise = fetch("Http://localhost:8000/users", {
+    const promise = fetch("http://localhost:8000/users", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
