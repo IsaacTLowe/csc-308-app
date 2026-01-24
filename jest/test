@@ -1,0 +1,15 @@
+
+const myFunctions = require('./sample-functions.js');
+
+test('Testing div -- success', () => {
+  const target = 4;
+  const result = myFunctions.div(8, 2);
+  expect(target).toBe(result);
+});
+
+test('Testing containsNumbers -- success', () => {
+  const target = true;
+  const result = containsNumbers("abc123");
+  expect(target).toBe(result);
+});
+
