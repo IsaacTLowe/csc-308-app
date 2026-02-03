@@ -1,6 +1,7 @@
-// backend.js
 import express from "express";
 import cors from "cors";
+import mongoose from "mongoose";
+import userServices from "./user_services.js";
 
 const app = express();
 const port = 8000;
@@ -8,102 +9,114 @@ const port = 8000;
 app.use(cors());
 app.use(express.json());
 
-const users = {
-  users_list: [
-    {
-      id: "xyz789",
-      name: "Charlie",
-      job: "Janitor"
-    },
-    {
-      id: "abc123",
-      name: "Mac",
-      job: "Bouncer"
-    },
-    {
-      id: "ppp222",
-      name: "Mac",
-      job: "Professor"
-    },
-    {
-      id: "yat999",
-      name: "Dee",
-      job: "Aspring actress"
-    },
-    {
-      id: "zap555",
-      name: "Dennis",
-      job: "Bartender"
-    }
-  ]
-};
+// MongoDB connection
+mongoose
+  .connect("mongodb://localhost:27017/users")
+  .then(() => console.log("Connected to MongoDB"))
+  .catch((error) => console.log("Error connecting to MongoDB:", error));
 
-const findUserByName = (name) => {
-  return users["users_list"].filter(
-    (user) => user["name"] === name
-  );
-};
-
+// GET /users - fetch all users or filter by name and/or job
 app.get("/users", (req, res) => {
   const name = req.query.name;
-  if (name != undefined) {
-    let result = findUserByName(name);
-    result = { users_list: result };
-    res.send(result);
+  const job = req.query.job;
+
+  if (name && job) {
+    // Filter by both name and job
+    userServices
+      .findUserByNameAndJob(name, job)
+      .then((users) => {
+        res.send({ users_list: users });
+      })
+      .catch((error) => {
+        console.log(error);
+        res.status(500).send("Internal Server Error");
+      });
+  } else if (name) {
+    // Filter by name only
+    userServices
+      .findUserByName(name)
+      .then((users) => {
+        res.send({ users_list: users });
+      })
+      .catch((error) => {
+        console.log(error);
+        res.status(500).send("Internal Server Error");
+      });
+  } else if (job) {
+    // Filter by job only
+    userServices
+      .findUserByJob(job)
+      .then((users) => {
+        res.send({ users_list: users });
+      })
+      .catch((error) => {
+        console.log(error);
+        res.status(500).send("Internal Server Error");
+      });
   } else {
-    res.send(users);
+    // Get all users
+    userServices
+      .getUsers()
+      .then((users) => {
+        res.send({ users_list: users });
+      })
+      .catch((error) => {
+        console.log(error);
+        res.status(500).send("Internal Server Error");
+      });
   }
 });
 
-const findUserById = (id) =>
-  users["users_list"].find((user) => user["id"] === id);
-
+// GET /users/:id - fetch user by id
 app.get("/users/:id", (req, res) => {
-  const id = req.params["id"];
-  let result = findUserById(id);
-  if (result === undefined) {
-    res.status(404).send("Resource not found.");
-  } else {
-    res.send(result);
-  }
+  const id = req.params.id;
+  userServices
+    .findUserById(id)
+    .then((user) => {
+      if (user) {
+        res.send(user);
+      } else {
+        res.status(404).send("Resource not found.");
+      }
+    })
+    .catch((error) => {
+      console.log(error);
+      res.status(500).send("Internal Server Error");
+    });
 });
 
-const generateId = () => {
-  return Math.random().toString(36).substr(2, 9);
-};
-
-const addUser = (user) => {
-  user.id = generateId();
-  users["users_list"].push(user);
-  return user;
-};
-
+// POST /users - create a new user
 app.post("/users", (req, res) => {
   const userToAdd = req.body;
-  const addedUser = addUser(userToAdd);
-  res.status(201).send(addedUser);
+  userServices
+    .addUser(userToAdd)
+    .then((savedUser) => {
+      res.status(201).send(savedUser);
+    })
+    .catch((error) => {
+      console.log(error);
+      res.status(500).send("Internal Server Error");
+    });
 });
 
-const deleteUser = (id) => {
-  const index = users["users_list"].findIndex((user) => user["id"] === id);
-  if (index !== -1) {
-    return users["users_list"].splice(index, 1)[0];
-  }
-  return null;
-};
-
+// DELETE /users/:id - delete user by id
 app.delete("/users/:id", (req, res) => {
-  const id = req.params["id"];
-  const deletedUser = deleteUser(id);
-  if (deletedUser) {
-    res.status(204).end();
-  } else {
-    res.status(404).send("User not found.");
-  }
+  const id = req.params.id;
+  userServices
+    .deleteUserById(id)
+    .then((deletedUser) => {
+      if (deletedUser) {
+        res.status(204).end();
+      } else {
+        res.status(404).send("User not found.");
+      }
+    })
+    .catch((error) => {
+      console.log(error);
+      res.status(500).send("Internal Server Error");
+    });
 });
 
 app.listen(port, () => {
-  console.log(
-    `Example app listening at http://localhost:${port}`
-  );
+  console.log(`Example app listening at http://localhost:${port}`);
 });
